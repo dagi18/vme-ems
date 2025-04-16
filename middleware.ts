@@ -31,8 +31,8 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // If there's a session and the user is trying to access auth routes or the home page
-    if (session && (req.nextUrl.pathname.startsWith("/auth/signin") || req.nextUrl.pathname === "/")) {
+    // If there's a session and the user is trying to access auth routes
+    if (session && req.nextUrl.pathname.startsWith("/auth/signin")) {
       // Get user role for proper redirection
       const { data: userData, error } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
@@ -46,10 +46,7 @@ export async function middleware(req: NextRequest) {
 
       // Redirect based on role
       const redirectUrl = req.nextUrl.clone()
-
-      // All roles go to the dashboard page, but we could customize this further
       redirectUrl.pathname = "/dashboard"
-
       return NextResponse.redirect(redirectUrl)
     }
 
@@ -115,5 +112,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/auth/:path*", "/"],
+  matcher: ["/dashboard/:path*", "/auth/:path*"],
 }

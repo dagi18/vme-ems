@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf"
-import "jspdf-autotable"
+import autoTable from "jspdf-autotable"
 
 interface RegistrationPDFData {
   guestId: string
@@ -21,6 +21,9 @@ export async function generateRegistrationPDF(data: RegistrationPDFData): Promis
     unit: "mm",
     format: "a4",
   })
+
+  // Initialize autoTable
+  autoTable(doc)
 
   // Define colors for black and yellow theme
   const yellowColor = [255, 220, 0] // RGB for yellow
@@ -77,8 +80,9 @@ export async function generateRegistrationPDF(data: RegistrationPDFData): Promis
   if (data.jobTitle) {
     attendeeDetails.push(["Job Title:", data.jobTitle])
   }
+
   // Add attendee details table with yellow highlights
-  ;(doc as any).autoTable({
+  autoTable(doc, {
     startY: 70,
     head: [],
     body: attendeeDetails,

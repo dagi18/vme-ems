@@ -56,7 +56,9 @@ export default function RegisterPage() {
   } | null>(null)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [isCheckingPhone, setIsCheckingPhone] = useState(false)
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const barcodeRef = useRef<HTMLDivElement>(null)
   const barcodeImageRef = useRef<string | null>(null)
 
@@ -99,11 +101,11 @@ export default function RegisterPage() {
         const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
         const url = URL.createObjectURL(svgBlob)
 
-        const img = new Image()
-        img.crossOrigin = "anonymous" // Add this to avoid CORS issues
+        // Use the browser's native Image constructor
+        const img = document.createElement("img")
+        img.crossOrigin = "anonymous"
 
-        // Fixed: Use function declaration instead of arrow function to avoid 'this' binding issues
-        img.onload = () => {
+        img.onload = function() {
           try {
             const canvas = document.createElement("canvas")
             canvas.width = img.width
@@ -120,8 +122,7 @@ export default function RegisterPage() {
           }
         }
 
-        // Fixed: Use function declaration instead of arrow function
-        img.onerror = () => {
+        img.onerror = function() {
           console.error("Error loading barcode image")
           URL.revokeObjectURL(url)
         }
@@ -167,6 +168,30 @@ export default function RegisterPage() {
     }
   }
 
+  // Function to check if email already exists
+  async function checkEmailExists(email: string, eventId: string): Promise<boolean> {
+    if (!email || !eventId) return false
+
+    try {
+      const { data, error } = await supabase
+        .from("guests")
+        .select("id")
+        .eq("email", email)
+        .eq("event_id", eventId)
+        .limit(1)
+
+      if (error) {
+        console.error("Error checking email:", error)
+        return false
+      }
+
+      return data && data.length > 0
+    } catch (error) {
+      console.error("Error checking email:", error)
+      return false
+    }
+  }
+
   // Real-time phone validation
   const validatePhoneNumber = async (phone: string) => {
     const eventId = form.getValues("event_id")
@@ -190,6 +215,29 @@ export default function RegisterPage() {
     }
   }
 
+  // Real-time email validation
+  const validateEmail = async (email: string) => {
+    const eventId = form.getValues("event_id")
+    if (!email || !eventId) {
+      setEmailError(null)
+      return
+    }
+
+    setIsCheckingEmail(true)
+    try {
+      const exists = await checkEmailExists(email, eventId)
+      if (exists) {
+        setEmailError("This email is already registered for this event")
+      } else {
+        setEmailError(null)
+      }
+    } catch (error) {
+      console.error("Error validating email:", error)
+    } finally {
+      setIsCheckingEmail(false)
+    }
+  }
+
   // Watch for event_id and phone changes to trigger validation
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
@@ -206,12 +254,28 @@ export default function RegisterPage() {
     return () => subscription.unsubscribe()
   }, [form])
 
+  // Watch for event_id and email changes to trigger validation
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "email" || name === "event_id") {
+        const email = value.email as string
+        const eventId = value.event_id as string
+
+        if (email && eventId) {
+          validateEmail(email)
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [form])
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Check for phone error before submitting
-    if (phoneError) {
+    // Check for phone and email errors before submitting
+    if (phoneError || emailError) {
       toast({
         title: "Registration Error",
-        description: phoneError,
+        description: phoneError || emailError,
         variant: "destructive",
       })
       return
@@ -219,14 +283,28 @@ export default function RegisterPage() {
 
     setIsSubmitting(true)
     try {
-      // Double-check if phone number already exists for this event
-      const phoneExists = await checkPhoneExists(values.phone, values.event_id)
+      // Double-check if phone number or email already exists for this event
+      const [phoneExists, emailExists] = await Promise.all([
+        checkPhoneExists(values.phone, values.event_id),
+        checkEmailExists(values.email, values.event_id),
+      ])
 
       if (phoneExists) {
         setPhoneError("This phone number is already registered for this event")
         toast({
           title: "Phone number already registered",
           description: "This phone number is already registered for this event. Please use a different phone number.",
+          variant: "destructive",
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      if (emailExists) {
+        setEmailError("This email is already registered for this event")
+        toast({
+          title: "Email already registered",
+          description: "This email is already registered for this event. Please use a different email.",
           variant: "destructive",
         })
         setIsSubmitting(false)
@@ -593,9 +671,39 @@ export default function RegisterPage() {
                           <Input
                             placeholder="john.doe@example.com"
                             {...field}
-                            className="border-yellow-500/20 focus:border-yellow-500"
+                            className={`border-yellow-500/20 focus:border-yellow-500 ${
+                              emailError ? "border-red-500 focus:border-red-500" : ""
+                            }`}
+                            onChange={(e) => {
+                              field.onChange(e)
+                              // Clear error when user starts typing again
+                              if (emailError) setEmailError(null)
+                            }}
+                            onBlur={(e) => {
+                              field.onBlur()
+                              if (e.target.value) validateEmail(e.target.value)
+                            }}
                           />
                         </FormControl>
+                        {emailError && (
+                          <div className="mt-2 animate-fadeIn">
+                            <Alert variant="destructive" className="py-3 border-red-500 bg-red-50">
+                              <AlertCircle className="h-4 w-4" />
+                              <div className="ml-2">
+                                <AlertTitle className="text-sm font-medium">Email already registered</AlertTitle>
+                                <AlertDescription className="text-xs mt-1">
+                                  This email is already registered for this event. Please use a different email or contact support if you need assistance.
+                                </AlertDescription>
+                              </div>
+                            </Alert>
+                          </div>
+                        )}
+                        {isCheckingEmail && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                            <span className="inline-block h-2 w-2 mr-1 bg-blue-500 rounded-full animate-pulse"></span>
+                            Checking email...
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

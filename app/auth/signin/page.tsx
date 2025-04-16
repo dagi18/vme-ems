@@ -97,10 +97,8 @@ export default function SignIn() {
           description: welcomeMessage,
         })
 
-        // Redirect based on role
-        // For all roles, we redirect to the dashboard page
-        // The middleware will handle any further role-specific redirections
-        window.location.href = "/dashboard"
+        // Use Next.js router for client-side navigation
+        router.push("/dashboard")
       }
     } catch (err) {
       console.error("Unexpected error during sign in:", err)
@@ -112,18 +110,20 @@ export default function SignIn() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <Image src="/images/validity-logo.png" alt="Validity Events" width={200} height={60} priority />
+    <div className="flex min-h-screen items-center justify-center bg-muted/30">
+      <Card className="w-full max-w-md border-[#fcd804]/20">
+        <CardHeader className="space-y-4 text-center">
+          <div className="flex justify-center">
+            <Image src="/images/validity-logo.png" alt="Validity Events" width={200} height={60} priority className="h-auto" />
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Sign in to your account</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and password to access the dashboard
-          </CardDescription>
+          <div className="space-y-2">
+            <CardTitle className="text-2xl font-bold">Sign in to your account</CardTitle>
+            <CardDescription>
+              Enter your email and password to access the dashboard
+            </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {supabaseError && (
             <Alert variant="destructive" className="mb-4">
               <AlertTitle>Configuration Error</AlertTitle>
@@ -157,7 +157,12 @@ export default function SignIn() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="your.email@example.com" {...field} disabled={isLoading} />
+                      <Input 
+                        placeholder="your.email@example.com" 
+                        {...field} 
+                        disabled={isLoading}
+                        className="border-[#fcd804]/20 focus:border-[#fcd804] focus:ring-[#fcd804]" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -176,6 +181,7 @@ export default function SignIn() {
                           placeholder="••••••••"
                           {...field}
                           disabled={isLoading}
+                          className="border-[#fcd804]/20 focus:border-[#fcd804] focus:ring-[#fcd804]"
                         />
                         <Button
                           type="button"
@@ -198,7 +204,11 @@ export default function SignIn() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full bg-[#fcd804] text-black hover:bg-[#fcd804]/90 transition-colors" 
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -211,8 +221,10 @@ export default function SignIn() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-center text-sm text-gray-500">Don&apos;t have an account yet? Contact your admin.</div>
+        <CardFooter className="flex flex-col space-y-4 border-t border-[#fcd804]/10 bg-[#fcd804]/5">
+          <div className="text-center text-sm text-gray-500">
+            Don&apos;t have an account yet? Contact your admin.
+          </div>
         </CardFooter>
       </Card>
     </div>
